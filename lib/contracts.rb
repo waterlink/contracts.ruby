@@ -1,5 +1,5 @@
-require 'decorators'
-require 'builtin_contracts'
+require './lib/decorators'
+require './lib/builtin_contracts'
 
 module Contracts
   def self.included(base)
@@ -38,7 +38,7 @@ end
 class Contract < Decorator
   attr_reader :args_contracts, :ret_contract, :klass, :method
   # decorator_name :contract
-  def initialize(klass, method, *contracts)
+  def initialize(*contracts)
     if contracts[-1].is_a? Hash
       # internally we just convert that return value syntax back to an array
       @args_contracts = contracts[0, contracts.size - 1] + contracts[-1].keys
@@ -50,7 +50,6 @@ class Contract < Decorator
     else
       fail "It looks like your contract for #{method} doesn't have a return value. A contract should be written as `Contract arg1, arg2 => return_value`."
     end
-    @klass, @method= klass, method
     @has_func_contracts = args_contracts.index do |contract|
       contract.is_a? Contracts::Func
     end
@@ -175,7 +174,7 @@ class Contract < Decorator
     call_with(nil, *args, &blk)
   end
 
-  def call_with(this, *args, &blk)
+  def check_args(*args, &blk)
     _args = blk ? args + [blk] : args
 
     # check contracts on arguments
@@ -191,23 +190,9 @@ class Contract < Decorator
         return unless call_function
       end
     end
+  end
 
-    if @has_func_contracts
-      # contracts on methods
-      contracts.each_with_index do |contract, i|
-        if contract.is_a? Contracts::Func
-        args[i] = Contract.new(@klass, args[i], *contract.contracts)
-        end
-      end
-    end
-
-    result = if @method.respond_to? :bind
-      # instance method
-      @method.bind(this).call(*args, &blk)
-    else
-      # class method
-      @method.call(*args, &blk)
-    end
+  def check_res(result)
     unless @ret_validator[result]
       Contract.failure_callback({:arg => result, :contract => @ret_contract, :class => @klass, :method => @method, :contracts => self})
     end    
