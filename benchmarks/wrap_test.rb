@@ -70,14 +70,21 @@ class Wrapped2
 end
 
 w = Wrapped.new
+w2 = Wrapped2.new
 nw = NotWrapped.new
 # 30 is the width of the output column
 Benchmark.bm 30 do |x|
-  x.report 'wrapped' do
+  x.report 'wrapped w/ method reference' do
     1000000.times do |_|
       w.add(rand(1000), rand(1000))
     end
   end
+  x.report 'wrapped w/ alias_method' do
+    1000000.times do |_|
+      w2.add(rand(1000), rand(1000))
+    end
+  end  
+  
   x.report 'not wrapped' do
     1000000.times do |_|
       nw.add(rand(1000), rand(1000))      

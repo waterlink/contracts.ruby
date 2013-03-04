@@ -122,21 +122,21 @@ class Contract < Decorator
   # we pre-make a proc to validate it so we
   # don't have to go through this decision tree every time.
   # Seems silly but it saves us a bunch of time (4.3sec vs 5.2sec)
-  def self.make_validator(contract)
+  def self.make_validator(contract, i)
     # if is faster than case!
     klass = contract.class
     if klass == Proc
       # e.g. lambda {true}
-      contract
+      "args_contracts[#{i}][_args[#{i}]]"
     elsif klass == Array
       # e.g. [Num, String]
       # TODO account for these errors too
-      lambda { |arg|
-        return false unless arg.is_a?(Array)
-        arg.zip(contract).all? do |_arg, _contract|
-          Contract.valid?(_arg, _contract)
+        %{return false unless _args[#{i}].is_a?(Array)
+        _args[#{i}].zip(args_contracts[#{i}]).all? do |_arg, _contract|
+          # what to do?
+          #Contract.valid?(_arg, _contract)
         end
-      }
+        }
     elsif klass == Hash
       # e.g. { :a => Num, :b => String }
       lambda { |arg|
@@ -157,11 +157,11 @@ class Contract < Decorator
       # classes and everything else
       # e.g. Fixnum, Num
       if contract.respond_to? :valid?
-        lambda { |arg| contract.valid?(arg) }
+        "args_contracts[#{i}].valid?(_args[#{i}])"
       elsif klass == Class
-        lambda { |arg| contract == arg.class }
+        "args_contracts[#{i}] == _args[#{i}].class"
       else
-        lambda { |arg| contract == arg }        
+        "args_contracts[#{i}] == _args[#{i}]"
       end
     end
   end  

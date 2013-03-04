@@ -34,7 +34,7 @@ module MethodDecorators
     decorators = @decorators.dup
     @decorators = nil
 
-    decorators.each do |klass, args|
+    klass, args = decorators[0]
       # a reference to the method gets passed into the contract here. This is good because
       # we are going to redefine this method with a new name below...so this reference is
       # now the *only* reference to the old method that exists.
@@ -45,25 +45,31 @@ module MethodDecorators
       fail "It looks like your contract for #{method} doesn't have a return value. A contract should be written as `Contract arg1, arg2 => return_value`."
     end
       
-      validators = contracts.map do |contract|
-        Contract.make_validator(contract)
-      end
       decorator = {
         :klass => self,
         :args_contracts => contracts[0, contracts.size - 1],
-        :ret_contract => contracts[-1],
-        :args_validators => validators[0, validators.size - 1],
-        :ret_validator => validators[-1]
+        :ret_contract => contracts[-1]
       }
+=begin
       if is_class_method
         decorator[:method] = :"old_#{name}"
       else
         decorator[:method] = :"old_#{name}"
       end
-      __decorated_methods_set(name, decorator)
-    end
+=end
+      if is_class_method
+        decorator[:method] = method(name)
+      else
+        decorator[:method] = instance_method(name)
+      end
 
-    alias_method :"old_#{name}", name
+    __decorated_methods_set(name, decorator)
+    #alias_method :"old_#{name}", name
+
+    args_validators = []
+    decorator[:args_contracts].each_with_index do |contract, i|
+      args_validators << Contract.make_validator(contract, i)
+    end
 
     # in place of this method, we are going to define our own method. This method
     # just calls the decorator passing in all args that were to be passed into the method.
@@ -73,31 +79,17 @@ module MethodDecorators
       def #{is_class_method ? "self." : ""}#{name}(*args, &blk)
         this = self#{is_class_method ? "" : ".class"}
         hash = this.__decorated_methods[#{name.inspect}]
+        args_contracts = hash[:args_contracts]
 
         _args = blk ? args + [blk] : args
 
-        # check contracts on arguments
-        # fun fact! This is significantly faster than .zip (3.7 secs vs 4.7 secs). Why??
-        last_index = hash[:args_validators].size - 1
-        # times is faster than (0..args.size).each
-        _args.size.times do |i|
-          # this is done to account for extra args (for *args)
-          j = i < last_index ? i : last_index
-          unless hash[:args_validators][j][_args[i]]
-            call_function = Contract.failure_callback({:arg => _args[i], :contract => hash[:args_contracts][j], :class => this, :method => hash[:method], :contracts => (hash[:args_contracts] + hash[:ret_contract])})
-            return unless call_function
-          end
-        end
-
-        #result = hash[:method].bind(self).call(*args, &blk)
-        result = this.send(hash[:method], *args, &blk)
-        unless hash[:ret_validator][result]
-          Contract.failure_callback({:arg => result, :contract => hash[:ret_contract], :class => this, :method => hash[:method], :contracts => (hash[:args_contracts] + hash[:ret_contract])})
-        end            
-        result
+#{args_validators.join("\n")}
+        hash[:method].bind(self).call(*args, &blk)
+        #this.send(hash[:method], *args, &blk)
       end
       }
       
+      puts foo
       class_eval foo, __FILE__, __LINE__ + 1
   end    
 
