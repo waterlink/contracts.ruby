@@ -30,32 +30,24 @@ module MethodDecorators
     # attr_accessor on the class variable decorated_methods
     class << self; attr_accessor :decorated_methods; end
 
-    if is_class_method
-      method_reference = method(name)
-      method_type = :class_methods
-      # private_methods is an array of strings on 1.8 and an array of symbols on 1.9
-      is_private = self.private_methods.include?(name) || self.private_methods.include?(name.to_s)
-    else
-      method_reference = instance_method(name)
-      method_type = :instance_methods
-      # private_instance_methods is an array of strings on 1.8 and an array of symbols on 1.9
-      is_private = self.private_instance_methods.include?(name) || self.private_instance_methods.include?(name.to_s)
-    end
-
-    @decorated_methods[method_type][name] ||= []
-
+    is_private = nil
     decorators.each do |klass, args|
       # a reference to the method gets passed into the contract here. This is good because
       # we are going to redefine this method with a new name below...so this reference is
       # now the *only* reference to the old method that exists.
       # We assume here that the decorator (klass) responds to .new
-      decorator = klass.new(self, method_reference, *args)
-      @decorated_methods[method_type][name] << decorator
-    end
-
-    if @decorated_methods[method_type][name].any? { |x| x.method != method_reference }
-      @decorated_methods[method_type][name].each do |decorator|
-        decorator.pattern_match!
+      if is_class_method
+        decorator = klass.new(self, method(name), *args)
+        @decorated_methods[:class_methods][name] ||= []
+        @decorated_methods[:class_methods][name] << decorator
+        # private_instance_methods is an array of strings on 1.8 and an array of symbols on 1.9
+        is_private = self.private_methods.include?(name) || self.private_methods.include?(name.to_s)
+      else
+        decorator = klass.new(self, instance_method(name), *args)
+        @decorated_methods[:instance_methods][name] ||= []
+        @decorated_methods[:instance_methods][name] << decorator
+        # private_instance_methods is an array of strings on 1.8 and an array of symbols on 1.9
+        is_private = self.private_instance_methods.include?(name) || self.private_instance_methods.include?(name.to_s)
       end
     end
 
@@ -119,16 +111,15 @@ Here's why: Suppose you have this code:
         success = false
         i = 0
         result = nil
-        expected_error = methods[0].failure_exception
         while !success
           method = methods[i]
           i += 1
           begin
             success = true
             result = method.call_with(self, *args, &blk)
-          rescue expected_error => e
+          rescue ContractError => e
             success = false
-            raise e.to_contract_error unless methods[i]
+            raise e unless methods[i]
           end
         end
         result
@@ -169,3 +160,5 @@ class Decorator
     @method = method
   end
 end
+
+
