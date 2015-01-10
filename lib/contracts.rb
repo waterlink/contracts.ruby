@@ -1,5 +1,6 @@
 require 'contracts/decorators'
 require 'contracts/builtin_contracts'
+require 'contracts/invariants'
 
 class ContractError < ArgumentError
   def to_contract_error
@@ -39,6 +40,10 @@ module Contracts
     base.class_eval do
       def Contract(*args)
         self.class.Contract(*args)
+      end
+
+      def Invariant(*args)
+        self.class.Invariant(*args)
       end
 
       def functype(funcname)
