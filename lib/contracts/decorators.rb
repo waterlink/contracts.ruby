@@ -160,6 +160,8 @@ Here's why: Suppose you have this code:
       # inside, `decorate` is called with those params.
       MethodDecorators.module_eval <<-ruby_eval, __FILE__, __LINE__ + 1
         def #{klass}(*args, &blk)
+          return if ENV["NO_CONTRACTS"]
+
           decorate(#{klass}, *args, &blk)
         end
       ruby_eval

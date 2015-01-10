@@ -40,6 +40,7 @@ module Contracts
     end
     base.class_eval do
       def Contract(*args)
+        return if ENV["NO_CONTRACTS"]
         self.class.Contract(*args)
       end
 
