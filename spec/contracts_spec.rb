@@ -44,6 +44,12 @@ RSpec.describe "Contracts:" do
       }.to raise_error(ContractError)
     end
 
+    it "should fall through when argument error happens" do
+      expect(
+        subject.process_request(PatternMatchingExample::Success["hello"], "world")
+      ).to eq(PatternMatchingExample::Success["world"])
+    end
+
     context "when failure_callback was overriden" do
       before do
         ::Contract.override_failure_callback do |_data|

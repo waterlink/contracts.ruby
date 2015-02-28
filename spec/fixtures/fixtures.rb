@@ -279,6 +279,11 @@ class PatternMatchingExample
   def decorated_request(request)
     request + "!"
   end
+
+  Contract Success, String => Response
+  def process_request(status, body)
+    Success[body]
+  end
 end
 
 # invariant example (silliest implementation ever)
