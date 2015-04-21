@@ -26,7 +26,7 @@ module Contracts
 
     base.instance_eval do
       def functype(funcname)
-        contracts = decorated_methods[:class_methods][funcname]
+        contracts = __contracts_ruby.decorated_methods[:class_methods][funcname]
         if contracts.nil?
           "No contract for #{self}.#{funcname}"
         else
@@ -51,7 +51,7 @@ your module.}
       end
 
       def functype(funcname)
-        contracts = self.class.decorated_methods[:instance_methods][funcname]
+        contracts = self.class.__contracts_ruby.decorated_methods[:instance_methods][funcname]
         if contracts.nil?
           "No contract for #{self.class}.#{funcname}"
         else
